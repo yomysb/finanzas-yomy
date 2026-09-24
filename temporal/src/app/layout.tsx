@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   description: "Claridad financiera para tu negocio: ventas, gastos y rentabilidad.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"

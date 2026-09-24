@@ -7,7 +7,6 @@ const NAV = [
   { href: "/dashboard", label: "Panel" },
   { href: "/ventas", label: "Ventas" },
   { href: "/compras-gastos", label: "Compras y gastos" },
-  { href: "/cierre", label: "Cierre diario" },
   { href: "/proveedores", label: "Proveedores" },
   { href: "/categorias", label: "Categorías" },
   { href: "/reportes", label: "Reportes" },

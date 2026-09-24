@@ -233,11 +233,7 @@ returns uuid language sql stable as $$
 $$;
 
 create policy "own business" on businesses for select using (id = current_business_id());
--- OJO: esta policy debe comparar contra auth.uid() directamente, no contra
--- current_business_id(), porque esa función a su vez lee user_profiles —
--- si la policy dependiera de ella, sería una referencia circular que
--- bloquea la lectura del propio perfil para todos, incluido el dueño.
-create policy "own profile" on user_profiles for select using (id = auth.uid());
+create policy "own profile" on user_profiles for select using (business_id = current_business_id());
 
 create policy "biz rw" on business_types for all using (business_id = current_business_id()) with check (business_id = current_business_id());
 create policy "biz rw" on payment_methods for all using (business_id = current_business_id()) with check (business_id = current_business_id());
@@ -290,15 +286,8 @@ create trigger trg_audit_sales before update on sales
 create trigger trg_audit_movements before update on financial_movements
   for each row execute function log_financial_change();
 
--- ----------------------------------------------------------------------------
--- movement_types: catálogo global de solo lectura (sin business_id, compartido
--- por todos los negocios). Se habilita RLS y se permite SELECT a cualquier
--- usuario autenticado; no hay policy de insert/update/delete porque el
--- catálogo solo se modifica por migración, no desde la app.
--- ----------------------------------------------------------------------------
-alter table movement_types enable row level security;
+drop policy "own profile" on user_profiles;
 
-create policy "authenticated can read movement types" on movement_types
+create policy "own profile" on user_profiles
   for select
-  to authenticated
-  using (true);
+  using (id = auth.uid());

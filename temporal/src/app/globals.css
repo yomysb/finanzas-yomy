@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #f2efe6;
+  --paper-raised: #fbfaf5;
+  --ink: #16241f;
+  --ink-soft: #45524a;
+  --line: #dcd6c4;
+  --gold: #b8863c;
+  --gold-soft: #e8d9bc;
+  --rust: #a3492f;
+  --rust-soft: #f0dcd2;
+  --pine: #2f5346;
+  --pine-soft: #dde8e0;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-rust: var(--rust);
+  --color-rust-soft: var(--rust-soft);
+  --color-pine: var(--pine);
+  --color-pine-soft: var(--pine-soft);
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-work-sans);
+  --font-mono: var(--font-plex-mono);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: var(--gold-soft);
+}
+
+.figure {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
