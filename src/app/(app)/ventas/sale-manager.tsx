@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { Button, Card, Input, Label, Pill, Textarea, EmptyState } from "@/components/ui/primitives";
 import { createSale, updateSale, voidSale, findSaleByDate } from "./actions";
+import { todayISO } from "@/lib/date";
 
 type Sale = {
   id: string;
@@ -20,7 +21,6 @@ type Sale = {
 };
 
 const money = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
-const todayISO = () => new Date().toISOString().slice(0, 10);
 
 export default function SaleManager({ sales }: { sales: Sale[] }) {
   const [showForm, setShowForm] = useState(false);

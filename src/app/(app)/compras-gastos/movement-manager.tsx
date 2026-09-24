@@ -11,6 +11,7 @@ import {
   voidMovement,
   getReceiptUrl,
 } from "./actions";
+import { todayISO } from "@/lib/date";
 
 type MovementType = {
   id: string;
@@ -34,7 +35,6 @@ type Movement = {
 };
 
 const money = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
-const todayISO = () => new Date().toISOString().slice(0, 10);
 
 export default function MovementManager({
   businessId,

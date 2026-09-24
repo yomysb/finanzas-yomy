@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card, Pill } from "@/components/ui/primitives";
 import DayPanel from "./day-panel";
+import { todayISO } from "@/lib/date";
 
 const STATUS_LABEL: Record<string, string> = {
   pendiente: "Pendiente",
@@ -8,10 +9,6 @@ const STATUS_LABEL: Record<string, string> = {
   conciliado: "Conciliado",
   cerrado: "Cerrado",
 };
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export default async function CierrePage() {
   const supabase = await createClient();
