@@ -11,7 +11,7 @@ export default async function ConfiguracionPage() {
   return (
     <div className="space-y-8">
       <div>
-        <p className="font-display text-3xl italic text-ink">Configuración</p>
+        <p className="font-display font-semibold tracking-tight text-3xl text-ink">Configuración</p>
         <p className="text-sm text-ink-soft">Catálogos maestros que usan ventas, compras y gastos.</p>
       </div>
       <div className="grid gap-6 md:grid-cols-2">

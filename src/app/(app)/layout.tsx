@@ -32,7 +32,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="flex min-h-screen w-full flex-col md:flex-row">
       <aside className="flex flex-col border-line bg-paper-raised md:w-60 md:shrink-0 md:border-r">
         <div className="border-b border-line px-5 py-5">
-          <p className="font-display text-lg italic text-ink">Finanzas</p>
+          <p className="font-display font-semibold tracking-tight text-lg text-ink">Finanzas</p>
           <p className="text-xs text-ink-soft">
             {(profile?.business as unknown as { name: string } | null)?.name ?? "Tu negocio"}
           </p>
@@ -42,7 +42,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-sm px-3 py-2 text-sm text-ink-soft hover:bg-paper hover:text-ink"
+              className="rounded-lg px-3 py-2 text-sm text-ink-soft hover:bg-paper hover:text-ink"
             >
               {item.label}
             </Link>

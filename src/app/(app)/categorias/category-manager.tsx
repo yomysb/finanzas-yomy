@@ -39,7 +39,7 @@ export default function CategoryManager({ categories }: { categories: Category[]
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="font-display text-3xl italic text-ink">Categorías de gasto</p>
+          <p className="font-display font-semibold tracking-tight text-3xl text-ink">Categorías de gasto</p>
           <p className="text-sm text-ink-soft">Organiza por categoría y, opcionalmente, subcategoría.</p>
         </div>
         <div className="flex items-center gap-3">

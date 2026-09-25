@@ -12,6 +12,7 @@ import {
   getReceiptUrl,
 } from "./actions";
 import { todayISO } from "@/lib/date";
+import { exportXLSX, exportCSV, exportPDF, type Column } from "@/lib/export";
 
 type MovementType = {
   id: string;
@@ -69,6 +70,15 @@ export default function MovementManager({
     () => [...movements].sort((a, b) => (a.movement_date < b.movement_date ? 1 : -1)),
     [movements]
   );
+
+  const movementColumns: Column<Movement>[] = [
+    { key: "movement_date", label: "Fecha" },
+    { key: "movement_type", label: "Tipo", format: (v) => (v as { name: string } | null)?.name ?? "" },
+    { key: "supplier", label: "Proveedor", format: (v) => (v as { name: string } | null)?.name ?? "" },
+    { key: "category", label: "Categoría", format: (v) => (v as { name: string } | null)?.name ?? "" },
+    { key: "payment_method", label: "Forma de pago", format: (v) => (v as { name: string } | null)?.name ?? "" },
+    { key: "amount", label: "Monto", format: (v) => Number(v).toFixed(2) },
+  ];
 
   function resetForm() {
     setMovementTypeId("");
@@ -145,10 +155,15 @@ export default function MovementManager({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="font-display text-3xl italic text-ink">Compras y gastos</p>
+          <p className="font-display font-semibold tracking-tight text-3xl text-ink">Compras y gastos</p>
           <p className="text-sm text-ink-soft">Todo lo que sale de dinero del negocio.</p>
         </div>
         <Button onClick={() => setShowForm((v) => !v)}>{showForm ? "Cancelar" : "Nuevo movimiento"}</Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={() => exportXLSX(sortedMovements, movementColumns, "compras-gastos")}>XLSX</Button>
+          <Button variant="ghost" onClick={() => exportCSV(sortedMovements, movementColumns, "compras-gastos")}>CSV</Button>
+          <Button variant="ghost" onClick={() => exportPDF("Reporte de compras y gastos", sortedMovements, movementColumns, "compras-gastos")}>PDF</Button>
+        </div>
       </div>
 
       {error && <p className="text-sm text-rust">{error}</p>}
@@ -241,7 +256,7 @@ export default function MovementManager({
                 type="file"
                 accept="image/jpeg,image/jpg,image/png,application/pdf"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-sm text-ink-soft file:mr-3 file:rounded-sm file:border file:border-line file:bg-paper file:px-3 file:py-1.5 file:text-sm"
+                className="block w-full text-sm text-ink-soft file:mr-3 file:rounded-lg file:border file:border-line file:bg-paper file:px-3 file:py-1.5 file:text-sm"
               />
             </div>
 
@@ -251,7 +266,7 @@ export default function MovementManager({
             </div>
 
             {duplicateWarning && (
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-gold/40 bg-gold-soft/40 p-4 sm:col-span-2">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gold/40 bg-gold-soft/40 p-4 sm:col-span-2">
                 <p className="text-sm text-ink">
                   Ya existe un movimiento con la misma fecha, proveedor y monto. ¿Aun así quieres guardarlo?
                 </p>
@@ -277,7 +292,7 @@ export default function MovementManager({
       {sortedMovements.length === 0 ? (
         <EmptyState title="Todavía no hay movimientos" description="Agrega el primero con el botón de arriba." />
       ) : (
-        <div className="overflow-x-auto rounded-sm border border-line">
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line bg-paper text-xs uppercase text-ink-soft">
@@ -306,7 +321,7 @@ export default function MovementManager({
                           className="text-ink-soft underline underline-offset-2 hover:text-ink"
                           onClick={() => handleViewReceipt(m.attachments[0].file_url)}
                         >
-                          Ver comprobante
+                          Ver / descargar comprobante
                         </button>
                       )}
                       {m.voided_at ? (

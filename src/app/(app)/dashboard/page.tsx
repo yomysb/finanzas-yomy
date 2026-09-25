@@ -81,7 +81,7 @@ export default async function DashboardPage({
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="font-display text-3xl italic text-ink">Panel</p>
+          <p className="font-display font-semibold tracking-tight text-3xl text-ink">Panel</p>
           <p className="text-sm text-ink-soft">
             {from} a {to} · comparado contra {prev.from} a {prev.to}
           </p>

@@ -61,7 +61,7 @@ export default function SupplierManager({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="font-display text-3xl italic text-ink">Proveedores</p>
+          <p className="font-display font-semibold tracking-tight text-3xl text-ink">Proveedores</p>
           <p className="text-sm text-ink-soft">Un solo registro por proveedor — evita duplicados con nombres distintos.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -121,7 +121,7 @@ export default function SupplierManager({
       {visible.length === 0 ? (
         <EmptyState title="Todavía no hay proveedores" description="Agrega el primero con el botón de arriba." />
       ) : (
-        <div className="overflow-x-auto rounded-sm border border-line">
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line bg-paper text-xs uppercase tracking-normal text-ink-soft">

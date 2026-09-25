@@ -27,7 +27,7 @@ export default async function ReportesPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="font-display text-3xl italic text-ink">Reportes</p>
+          <p className="font-display font-semibold tracking-tight text-3xl text-ink">Reportes</p>
           <p className="text-sm text-ink-soft">{from} a {to}</p>
         </div>
         <PeriodSelector preset={preset} from={from} to={to} />

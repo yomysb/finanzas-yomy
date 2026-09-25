@@ -29,7 +29,7 @@ export default async function CierrePage() {
   return (
     <div className="space-y-8">
       <div>
-        <p className="font-display text-3xl italic text-ink">Cierre diario</p>
+        <p className="font-display font-semibold tracking-tight text-3xl text-ink">Cierre diario</p>
         <p className="text-sm text-ink-soft">Revisa el día y avanza su estado cuando ya cuadre.</p>
       </div>
 

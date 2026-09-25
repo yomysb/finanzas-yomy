@@ -4,6 +4,8 @@ import { useMemo, useState, useTransition } from "react";
 import { Button, Card, Input, Label, Pill, Textarea, EmptyState } from "@/components/ui/primitives";
 import { createSale, updateSale, voidSale, findSaleByDate } from "./actions";
 import { todayISO } from "@/lib/date";
+import { exportXLSX, exportCSV, exportPDF, type Column } from "@/lib/export";
+import ImportSales from "./import-sales";
 
 type Sale = {
   id: string;
@@ -24,6 +26,7 @@ const money = (n: number) => n.toLocaleString("es-MX", { style: "currency", curr
 
 export default function SaleManager({ sales }: { sales: Sale[] }) {
   const [showForm, setShowForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saleDate, setSaleDate] = useState(todayISO());
   const [duplicateId, setDuplicateId] = useState<string | null>(null);
@@ -34,6 +37,16 @@ export default function SaleManager({ sales }: { sales: Sale[] }) {
     () => [...sales].sort((a, b) => (a.sale_date < b.sale_date ? 1 : -1)),
     [sales]
   );
+
+  const saleColumns: Column<Sale>[] = [
+    { key: "sale_date", label: "Fecha" },
+    { key: "num_orders", label: "Tickets" },
+    { key: "num_products", label: "Productos" },
+    { key: "cash_amount", label: "Efectivo", format: (v) => Number(v).toFixed(2) },
+    { key: "card_amount", label: "Tarjeta", format: (v) => Number(v).toFixed(2) },
+    { key: "transfer_amount", label: "Transferencia", format: (v) => Number(v).toFixed(2) },
+    { key: "total_amount", label: "Total", format: (v) => Number(v).toFixed(2) },
+  ];
 
   async function handleDateBlur(date: string) {
     setSaleDate(date);
@@ -82,25 +95,35 @@ export default function SaleManager({ sales }: { sales: Sale[] }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="font-display text-3xl italic text-ink">Ventas</p>
+          <p className="font-display font-semibold tracking-tight text-3xl text-ink">Ventas</p>
           <p className="text-sm text-ink-soft">Un registro por día. El total se calcula solo.</p>
         </div>
-        <Button
-          onClick={() => {
-            setShowForm((v) => !v);
-            setDuplicateId(null);
-          }}
-        >
-          {showForm ? "Cancelar" : "Nueva venta"}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            onClick={() => {
+              setShowForm((v) => !v);
+              setDuplicateId(null);
+            }}
+          >
+            {showForm ? "Cancelar" : "Nueva venta"}
+          </Button>
+          <Button variant="ghost" onClick={() => setShowImport((v) => !v)}>
+            {showImport ? "Cancelar" : "Importar CSV"}
+          </Button>
+          <Button variant="ghost" onClick={() => exportXLSX(visible, saleColumns, "ventas")}>XLSX</Button>
+          <Button variant="ghost" onClick={() => exportCSV(visible, saleColumns, "ventas")}>CSV</Button>
+          <Button variant="ghost" onClick={() => exportPDF("Reporte de ventas", visible, saleColumns, "ventas")}>PDF</Button>
+        </div>
       </div>
 
       {error && <p className="text-sm text-rust">{error}</p>}
 
+      {showImport && <ImportSales onDone={() => setShowImport(false)} />}
+
       {showForm && (
         <Card className="p-5">
           {duplicateId ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-gold/40 bg-gold-soft/40 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gold/40 bg-gold-soft/40 p-4">
               <p className="text-sm text-ink">
                 Ya existe una venta para el {saleDate}. Edítala desde la tabla de abajo en vez de crear otra.
               </p>
@@ -167,7 +190,7 @@ export default function SaleManager({ sales }: { sales: Sale[] }) {
       {visible.length === 0 ? (
         <EmptyState title="Todavía no hay ventas registradas" description="Agrega la primera con el botón de arriba." />
       ) : (
-        <div className="overflow-x-auto rounded-sm border border-line">
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line bg-paper text-xs uppercase text-ink-soft">

@@ -1,17 +1,35 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #f2efe6;
-  --paper-raised: #fbfaf5;
-  --ink: #16241f;
-  --ink-soft: #45524a;
-  --line: #dcd6c4;
-  --gold: #b8863c;
-  --gold-soft: #e8d9bc;
-  --rust: #a3492f;
-  --rust-soft: #f0dcd2;
-  --pine: #2f5346;
-  --pine-soft: #dde8e0;
+  --paper: #fafafa;
+  --paper-raised: #ffffff;
+  --ink: #18181b;
+  --ink-soft: #71717a;
+  --line: #e4e4e7;
+  --gold: #d97706;
+  --gold-soft: #fef3c7;
+  --rust: #dc2626;
+  --rust-soft: #fee2e2;
+  --pine: #059669;
+  --pine-soft: #d1fae5;
+}
+
+/* Modo oscuro automático — sigue la preferencia del sistema operativo
+   (que a su vez suele cambiar sola según la hora, en iOS/macOS/Windows/Android). */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #09090b;
+    --paper-raised: #17171a;
+    --ink: #fafafa;
+    --ink-soft: #a1a1aa;
+    --line: #27272a;
+    --gold: #f59e0b;
+    --gold-soft: #3d2c0a;
+    --rust: #f87171;
+    --rust-soft: #3f1414;
+    --pine: #34d399;
+    --pine-soft: #0b2e22;
+  }
 }
 
 @theme inline {
@@ -26,8 +44,8 @@
   --color-rust-soft: var(--rust-soft);
   --color-pine: var(--pine);
   --color-pine-soft: var(--pine-soft);
-  --font-display: var(--font-fraunces);
-  --font-sans: var(--font-work-sans);
+  --font-display: var(--font-manrope);
+  --font-sans: var(--font-manrope);
   --font-mono: var(--font-plex-mono);
 }
 
@@ -35,6 +53,7 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-sans);
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 ::selection {
@@ -45,4 +64,10 @@ body {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
+}
+
+@media print {
+  aside, .no-print {
+    display: none !important;
+  }
 }

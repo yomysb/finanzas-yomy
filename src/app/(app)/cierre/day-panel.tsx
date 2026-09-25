@@ -41,7 +41,7 @@ export default function DayPanel({
     <Card className="p-6">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="font-display text-2xl italic text-ink">{date}</p>
+          <p className="font-display font-semibold tracking-tight text-2xl text-ink">{date}</p>
           <Pill tone={status === "cerrado" ? "pine" : status === "pendiente" ? "neutral" : "gold"}>
             {STATUS_LABEL[status]}
           </Pill>

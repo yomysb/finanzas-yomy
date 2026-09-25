@@ -16,8 +16,9 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { Card, Pill } from "@/components/ui/primitives";
+import { Button, Card, Pill } from "@/components/ui/primitives";
 import type { SaleRow, MovementRow } from "@/lib/finance";
+import { exportXLSX, exportCSV, exportPDF, type Column } from "@/lib/export";
 
 const money = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 const COLORS = ["#b8863c", "#2f5346", "#a3492f", "#6b8f7f", "#8c6a2f", "#4a6b5a"];
@@ -49,6 +50,45 @@ export default function ReportTabs({
 }) {
   const [tab, setTab] = useState<Tab>("ventas");
 
+  const salesColumns: Column<SaleRow>[] = [
+    { key: "sale_date", label: "Fecha" },
+    { key: "num_orders", label: "Tickets" },
+    { key: "num_products", label: "Productos" },
+    { key: "cash_amount", label: "Efectivo", format: (v) => Number(v).toFixed(2) },
+    { key: "card_amount", label: "Tarjeta", format: (v) => Number(v).toFixed(2) },
+    { key: "transfer_amount", label: "Transferencia", format: (v) => Number(v).toFixed(2) },
+    { key: "total_amount", label: "Total", format: (v) => Number(v).toFixed(2) },
+  ];
+
+  const movementsColumns: Column<MovementRow>[] = [
+    { key: "movement_date", label: "Fecha" },
+    { key: "supplier", label: "Proveedor", format: (v) => (v as { name: string } | null)?.name ?? "" },
+    { key: "category", label: "Categoría", format: (v) => (v as { name: string } | null)?.name ?? "" },
+    { key: "payment_method", label: "Forma de pago", format: (v) => (v as { name: string } | null)?.name ?? "" },
+    { key: "amount", label: "Monto", format: (v) => Number(v).toFixed(2) },
+  ];
+
+  const supplierColumns: Column<{ name: string; amount: number; percent: number }>[] = [
+    { key: "name", label: "Proveedor" },
+    { key: "amount", label: "Monto", format: (v) => Number(v).toFixed(2) },
+    { key: "percent", label: "% del total", format: (v) => `${Number(v).toFixed(1)}%` },
+  ];
+
+  const categoryColumns: Column<{ name: string; amount: number }>[] = [
+    { key: "name", label: "Categoría" },
+    { key: "amount", label: "Monto", format: (v) => Number(v).toFixed(2) },
+  ];
+
+  function currentExport(): { rows: unknown[]; columns: Column<unknown>[]; title: string; filename: string } | null {
+    if (tab === "ventas") return { rows: sales, columns: salesColumns as Column<unknown>[], title: "Reporte de ventas", filename: "ventas" };
+    if (tab === "compras") return { rows: movements, columns: movementsColumns as Column<unknown>[], title: "Reporte de compras y gastos", filename: "compras-gastos" };
+    if (tab === "proveedores") return { rows: bySupplier, columns: supplierColumns as Column<unknown>[], title: "Reporte por proveedor", filename: "por-proveedor" };
+    if (tab === "categorias") return { rows: byCategory, columns: categoryColumns as Column<unknown>[], title: "Reporte por categoría", filename: "por-categoria" };
+    return null;
+  }
+
+  const exportable = currentExport();
+
   const paymentSplit = [
     { name: "Efectivo", value: summary.cash },
     { name: "Tarjeta", value: summary.card },
@@ -57,22 +97,37 @@ export default function ReportTabs({
 
   return (
     <div>
-      <div className="mb-5 flex flex-wrap gap-1 border-b border-line">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`rounded-t-sm px-3 py-2 text-sm ${
-              tab === t ? "border-b-2 border-ink text-ink" : "text-ink-soft hover:text-ink"
-            }`}
-          >
-            {TAB_LABEL[t]}
-          </button>
-        ))}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-0">
+        <div className="flex flex-wrap gap-1">
+          {TABS.map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`rounded-t-lg px-3 py-2 text-sm ${
+                tab === t ? "border-b-2 border-ink text-ink" : "text-ink-soft hover:text-ink"
+              }`}
+            >
+              {TAB_LABEL[t]}
+            </button>
+          ))}
+        </div>
+        {exportable && (
+          <div className="mb-1 flex gap-2">
+            <Button variant="ghost" onClick={() => exportXLSX(exportable.rows, exportable.columns, exportable.filename)}>
+              XLSX
+            </Button>
+            <Button variant="ghost" onClick={() => exportCSV(exportable.rows, exportable.columns, exportable.filename)}>
+              CSV
+            </Button>
+            <Button variant="ghost" onClick={() => exportPDF(exportable.title, exportable.rows, exportable.columns, exportable.filename)}>
+              PDF
+            </Button>
+          </div>
+        )}
       </div>
 
       {tab === "ventas" && (
-        <div className="overflow-x-auto rounded-sm border border-line">
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line bg-paper text-xs uppercase text-ink-soft">
@@ -109,7 +164,7 @@ export default function ReportTabs({
       )}
 
       {tab === "compras" && (
-        <div className="overflow-x-auto rounded-sm border border-line">
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line bg-paper text-xs uppercase text-ink-soft">
@@ -142,7 +197,7 @@ export default function ReportTabs({
       )}
 
       {tab === "proveedores" && (
-        <div className="overflow-x-auto rounded-sm border border-line">
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line bg-paper text-xs uppercase text-ink-soft">
@@ -170,7 +225,7 @@ export default function ReportTabs({
       )}
 
       {tab === "categorias" && (
-        <div className="overflow-x-auto rounded-sm border border-line">
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line bg-paper text-xs uppercase text-ink-soft">

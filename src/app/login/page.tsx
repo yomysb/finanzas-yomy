@@ -31,10 +31,10 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <p className="font-display text-3xl italic text-ink">Finanzas</p>
+          <p className="font-display font-semibold tracking-tight text-3xl text-ink">Finanzas</p>
           <p className="mt-1 text-sm text-ink-soft">Claridad sobre tu negocio, día a día.</p>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-sm border border-line bg-paper-raised p-6">
+        <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-line bg-paper-raised p-6">
           <div>
             <Label htmlFor="email">Correo</Label>
             <Input
