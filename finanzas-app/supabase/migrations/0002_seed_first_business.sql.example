@@ -1,0 +1,12 @@
+-- Este archivo es una PLANTILLA, no una migración automática.
+-- Ejecuta estos pasos manualmente en el SQL editor de Supabase
+-- después de crear tu primer usuario en Authentication > Users.
+
+-- 1) Crea el negocio (ajusta el nombre)
+insert into businesses (name) values ('Yomy Snacks') returning id;
+-- copia el id que regresa y úsalo abajo
+
+-- 2) Vincula tu usuario de auth.users a ese negocio como admin
+-- (obtén tu user id en Authentication > Users)
+insert into user_profiles (id, business_id, role, full_name)
+values ('<AUTH_USER_ID>', '<BUSINESS_ID>', 'admin', 'Tu nombre');
