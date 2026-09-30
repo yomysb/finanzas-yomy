@@ -32,10 +32,12 @@ export async function createSale(formData: FormData) {
   const card = Number(formData.get("card_amount") ?? 0);
   const transfer = Number(formData.get("transfer_amount") ?? 0);
   const posTotalRaw = formData.get("pos_reported_total");
+  const salesIva = Number(formData.get("sales_iva_amount") ?? 0) || 0;
 
   for (const [label, v] of [["Efectivo", cash], ["Tarjeta", card], ["Transferencia", transfer]] as const) {
     if (Number.isNaN(v) || v < 0) throw new Error(`${label} debe ser un número mayor o igual a cero`);
   }
+  if (salesIva < 0) throw new Error("El IVA no puede ser negativo");
 
   const { error } = await supabase.from("sales").insert({
     business_id: businessId,
@@ -46,6 +48,7 @@ export async function createSale(formData: FormData) {
     card_amount: card,
     transfer_amount: transfer,
     pos_reported_total: posTotalRaw ? Number(posTotalRaw) : null,
+    sales_iva_amount: salesIva,
     notes: String(formData.get("notes") ?? "").trim() || null,
     created_by: userId,
     updated_by: userId,
@@ -80,6 +83,7 @@ export async function updateSale(id: string, formData: FormData) {
       card_amount: card,
       transfer_amount: transfer,
       pos_reported_total: posTotalRaw ? Number(posTotalRaw) : null,
+      sales_iva_amount: Number(formData.get("sales_iva_amount") ?? 0) || 0,
       notes: String(formData.get("notes") ?? "").trim() || null,
       updated_by: userId,
     })

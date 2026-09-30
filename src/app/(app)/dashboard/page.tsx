@@ -3,7 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, Pill } from "@/components/ui/primitives";
 import PeriodSelector from "@/components/finance/period-selector";
 import { resolvePeriod, previousPeriod, type PeriodPreset } from "@/lib/period";
-import { fetchSales, fetchMovements, summarize } from "@/lib/finance";
+import { fetchSales, fetchMovements, summarize, summarizeFiscal, ISR_TABLE_YEAR } from "@/lib/finance";
+import { todayISO } from "@/lib/date";
+import FiscalReserveCard from "./fiscal-reserve-card";
 
 const money = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 const pct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
@@ -35,7 +37,42 @@ export default async function DashboardPage({
   ]);
 
   const cur = summarize(sales, movements);
+  const fiscal = summarizeFiscal(sales, movements, from, to);
+  const utilidadNetaRetirable = cur.resultEstimated - (fiscal.ivaAPagarEstimado + fiscal.isrEstimado);
   const previous = summarize(prevSales, prevMovements);
+
+  // Provisión de reserva fiscal — siempre sobre el mes en curso, con datos
+  // reales, independiente del selector de periodo de arriba.
+  const today = todayISO();
+  const [todayYear, todayMonth, todayDay] = today.split("-").map(Number);
+  const monthStart = `${todayYear}-${String(todayMonth).padStart(2, "0")}-01`;
+  const daysElapsed = todayDay;
+  const periodMonth = monthStart;
+  const monthLabel = new Date(`${monthStart}T00:00:00Z`).toLocaleDateString("es-MX", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  const dueDate = new Date(Date.UTC(todayYear, todayMonth, 17)); // mes siguiente, día 17
+  const dueDateLabel = dueDate.toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+
+  const [mtdSales, mtdMovements, reserveStatusRow] = await Promise.all([
+    fetchSales(supabase, monthStart, today),
+    fetchMovements(supabase, monthStart, today),
+    supabase
+      .from("fiscal_reserve_status")
+      .select("is_reserved")
+      .eq("period_month", periodMonth)
+      .maybeSingle(),
+  ]);
+  const mtdSummary = summarize(mtdSales, mtdMovements);
+  const mtdFiscal = summarizeFiscal(mtdSales, mtdMovements, monthStart, today);
+  const reservaFiscalSugerida = mtdFiscal.ivaAPagarEstimado + mtdFiscal.isrEstimado;
+  const apartadoDiarioRecomendado = daysElapsed > 0 ? reservaFiscalSugerida / daysElapsed : 0;
+  const utilidadNetaDisponibleLimpia = mtdSummary.salesTotal - mtdSummary.movementsTotal - reservaFiscalSugerida;
+  const invoicedMtd = mtdMovements.filter((m) => m.tax_status === "invoiced").reduce((s, m) => s + Number(m.amount), 0);
+  const coberturaCFDI = mtdSummary.movementsTotal > 0 ? (invoicedMtd / mtdSummary.movementsTotal) * 100 : 0;
+  const initialIsReserved = reserveStatusRow.data?.is_reserved ?? false;
 
   // Catálogo — checklist de arranque
   const [{ count: suppliers }, { count: categories }, { count: paymentMethods }] = await Promise.all([
@@ -131,6 +168,72 @@ export default async function DashboardPage({
             <p className="figure mt-1 text-lg text-ink">{i.value}</p>
           </Card>
         ))}
+      </section>
+
+      <FiscalReserveCard
+        periodMonth={periodMonth}
+        monthLabel={monthLabel}
+        daysElapsed={daysElapsed}
+        reservaFiscalSugerida={reservaFiscalSugerida}
+        apartadoDiarioRecomendado={apartadoDiarioRecomendado}
+        utilidadNetaDisponible={utilidadNetaDisponibleLimpia}
+        ivaAPagar={mtdFiscal.ivaAPagarEstimado}
+        isrEstimado={mtdFiscal.isrEstimado}
+        coberturaCFDI={coberturaCFDI}
+        dueDateLabel={dueDateLabel}
+        initialIsReserved={initialIsReserved}
+      />
+
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-ink-soft">Reserva fiscal y utilidad neta real (PFAE) — periodo seleccionado</h2>
+          <span className="text-xs text-ink-soft">Estimado · no sustituye tu cálculo fiscal real</span>
+        </div>
+        <Card className="p-5">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-ink-soft">Utilidad neta retirable</p>
+              <p className={`figure mt-2 text-3xl ${utilidadNetaRetirable >= 0 ? "text-ink" : "text-rust"}`}>
+                {money(utilidadNetaRetirable)}
+              </p>
+              <p className="mt-1 text-xs text-ink-soft">
+                Resultado estimado ({money(cur.resultEstimated)}) menos IVA por pagar e ISR estimados.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-xs text-ink-soft">IVA de ventas</p>
+                <p className="figure text-ink">{money(fiscal.ivaVentas)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-ink-soft">IVA acreditable (facturado)</p>
+                <p className="figure text-ink">{money(fiscal.ivaAcreditable)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-ink-soft">IVA a pagar (estimado)</p>
+                <p className="figure text-ink">
+                  {fiscal.saldoIvaAFavor > 0 ? `Saldo a favor: ${money(fiscal.saldoIvaAFavor)}` : money(fiscal.ivaAPagarEstimado)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-ink-soft">Base gravable ISR</p>
+                <p className="figure text-ink">{money(fiscal.baseGravable)}</p>
+              </div>
+              <div className="col-span-2 border-t border-line pt-3">
+                <p className="text-xs text-ink-soft">
+                  ISR estimado (tarifa progresiva Art. 96 LISR {ISR_TABLE_YEAR}, prorrateada a los días del
+                  periodo — el cálculo real del SAT es acumulado desde enero, no por periodo aislado)
+                </p>
+                <p className="figure text-ink">{money(fiscal.isrEstimado)}</p>
+              </div>
+            </div>
+          </div>
+          <p className="mt-4 border-t border-line pt-3 text-xs text-ink-soft">
+            Deducciones facturadas: {money(fiscal.deduccionesFacturadas)} — solo compras/gastos marcados como
+            &quot;Facturado&quot;. Confirma con tu contador antes de usar estas cifras para retirar utilidades o
+            calcular pagos provisionales.
+          </p>
+        </Card>
       </section>
 
       {alerts.length > 0 && (

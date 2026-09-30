@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Card, Input, Label, Pill, Select, Textarea, EmptyState } from "@/components/ui/primitives";
 import {
@@ -10,9 +10,12 @@ import {
   attachReceipt,
   voidMovement,
   getReceiptUrl,
+  updateMovementTaxStatus,
 } from "./actions";
+import { calcIva16FromTotal } from "@/lib/tax";
 import { todayISO } from "@/lib/date";
 import { exportXLSX, exportCSV, exportPDF, type Column } from "@/lib/export";
+import ImportCfdi from "./import-cfdi";
 
 type MovementType = {
   id: string;
@@ -21,13 +24,16 @@ type MovementType = {
   requires_supplier: boolean;
   requires_category: boolean;
 };
-type Option = { id: string; name: string };
+type Option = { id: string; name: string; tax_id?: string | null };
 type Movement = {
   id: string;
   movement_date: string;
   amount: number;
+  cfdi_uuid?: string | null;
   notes: string | null;
   voided_at: string | null;
+  tax_status: "no_invoice" | "pending_invoice" | "invoiced";
+  tax_iva_amount: number;
   movement_type: { name: string } | null;
   supplier: { name: string } | null;
   category: { name: string } | null;
@@ -35,10 +41,22 @@ type Movement = {
   attachments: { id: string; file_url: string; file_type: string }[];
 };
 
+const TAX_STATUS_LABEL: Record<Movement["tax_status"], string> = {
+  no_invoice: "Sin factura",
+  pending_invoice: "Pendiente de facturar",
+  invoiced: "Facturado",
+};
+const TAX_STATUS_TONE: Record<Movement["tax_status"], "neutral" | "gold" | "pine"> = {
+  no_invoice: "neutral",
+  pending_invoice: "gold",
+  invoiced: "pine",
+};
+
 const money = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 
 export default function MovementManager({
   businessId,
+  businessRfc,
   movements,
   movementTypes,
   suppliers,
@@ -46,6 +64,7 @@ export default function MovementManager({
   paymentMethods,
 }: {
   businessId: string;
+  businessRfc: string | null;
   movements: Movement[];
   movementTypes: MovementType[];
   suppliers: Option[];
@@ -53,11 +72,15 @@ export default function MovementManager({
   paymentMethods: Option[];
 }) {
   const [showForm, setShowForm] = useState(false);
+  const [showCfdiImport, setShowCfdiImport] = useState(false);
+  const [showOnlyPending, setShowOnlyPending] = useState(false);
   const [movementTypeId, setMovementTypeId] = useState("");
   const [supplierId, setSupplierId] = useState("");
   const [newSupplierName, setNewSupplierName] = useState("");
   const [addingSupplier, setAddingSupplier] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const amountInputRef = useRef<HTMLInputElement>(null);
+  const ivaInputRef = useRef<HTMLInputElement>(null);
   const [duplicateConfirmed, setDuplicateConfirmed] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +94,13 @@ export default function MovementManager({
     [movements]
   );
 
+  const pendingInvoices = useMemo(
+    () => sortedMovements.filter((m) => m.tax_status === "pending_invoice" && !m.voided_at),
+    [sortedMovements]
+  );
+
+  const displayedMovements = showOnlyPending ? pendingInvoices : sortedMovements;
+
   const movementColumns: Column<Movement>[] = [
     { key: "movement_date", label: "Fecha" },
     { key: "movement_type", label: "Tipo", format: (v) => (v as { name: string } | null)?.name ?? "" },
@@ -78,6 +108,8 @@ export default function MovementManager({
     { key: "category", label: "Categoría", format: (v) => (v as { name: string } | null)?.name ?? "" },
     { key: "payment_method", label: "Forma de pago", format: (v) => (v as { name: string } | null)?.name ?? "" },
     { key: "amount", label: "Monto", format: (v) => Number(v).toFixed(2) },
+    { key: "tax_status", label: "Estado fiscal", format: (v) => TAX_STATUS_LABEL[v as Movement["tax_status"]] },
+    { key: "tax_iva_amount", label: "IVA", format: (v) => Number(v).toFixed(2) },
   ];
 
   function resetForm() {
@@ -142,6 +174,10 @@ export default function MovementManager({
     voidMovement(id, reason).catch((e) => setError(e instanceof Error ? e.message : "Error al anular"));
   }
 
+  function handleTaxStatusChange(id: string, status: "no_invoice" | "pending_invoice" | "invoiced") {
+    updateMovementTaxStatus(id, status).catch((e) => setError(e instanceof Error ? e.message : "Error al actualizar"));
+  }
+
   async function handleViewReceipt(path: string) {
     try {
       const url = await getReceiptUrl(path);
@@ -159,14 +195,38 @@ export default function MovementManager({
           <p className="text-sm text-ink-soft">Todo lo que sale de dinero del negocio.</p>
         </div>
         <Button onClick={() => setShowForm((v) => !v)}>{showForm ? "Cancelar" : "Nuevo movimiento"}</Button>
+        <Button variant="ghost" onClick={() => setShowCfdiImport((v) => !v)}>
+          {showCfdiImport ? "Cancelar" : "Registrar desde factura (XML)"}
+        </Button>
+        <Button
+          variant={showOnlyPending ? "primary" : "ghost"}
+          onClick={() => setShowOnlyPending((v) => !v)}
+        >
+          {showOnlyPending ? "Ver todos" : "Pendientes de facturar"}
+          {pendingInvoices.length > 0 && !showOnlyPending && (
+            <Pill tone="gold">{pendingInvoices.length}</Pill>
+          )}
+        </Button>
         <div className="flex gap-2">
-          <Button variant="ghost" onClick={() => exportXLSX(sortedMovements, movementColumns, "compras-gastos")}>XLSX</Button>
-          <Button variant="ghost" onClick={() => exportCSV(sortedMovements, movementColumns, "compras-gastos")}>CSV</Button>
-          <Button variant="ghost" onClick={() => exportPDF("Reporte de compras y gastos", sortedMovements, movementColumns, "compras-gastos")}>PDF</Button>
+          <Button variant="ghost" onClick={() => exportXLSX(displayedMovements, movementColumns, "compras-gastos")}>XLSX</Button>
+          <Button variant="ghost" onClick={() => exportCSV(displayedMovements, movementColumns, "compras-gastos")}>CSV</Button>
+          <Button variant="ghost" onClick={() => exportPDF("Reporte de compras y gastos", displayedMovements, movementColumns, "compras-gastos")}>PDF</Button>
         </div>
       </div>
 
       {error && <p className="text-sm text-rust">{error}</p>}
+
+      {showCfdiImport && (
+        <ImportCfdi
+          businessId={businessId}
+          businessRfc={businessRfc}
+          movementTypes={movementTypes}
+          suppliers={suppliers}
+          categories={categories}
+          paymentMethods={paymentMethods}
+          onDone={() => setShowCfdiImport(false)}
+        />
+      )}
 
       {showForm && (
         <Card className="p-5">
@@ -246,7 +306,38 @@ export default function MovementManager({
 
             <div>
               <Label htmlFor="amount">Monto *</Label>
-              <Input id="amount" name="amount" type="number" min={0.01} step="0.01" required />
+              <Input ref={amountInputRef} id="amount" name="amount" type="number" min={0.01} step="0.01" required />
+            </div>
+
+            <div>
+              <Label htmlFor="tax_status">Estado fiscal</Label>
+              <Select id="tax_status" name="tax_status" defaultValue="no_invoice">
+                <option value="no_invoice">Sin factura</option>
+                <option value="pending_invoice">Pendiente de facturar</option>
+                <option value="invoiced">Facturado</option>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="tax_iva_amount">Monto IVA 16% ($) — opcional</Label>
+              <div className="flex gap-2">
+                <Input ref={ivaInputRef} id="tax_iva_amount" name="tax_iva_amount" type="number" min={0} step="0.01" placeholder="0.00" />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    const total = Number(amountInputRef.current?.value ?? 0);
+                    if (ivaInputRef.current) ivaInputRef.current.value = String(calcIva16FromTotal(total));
+                  }}
+                >
+                  Calcular 16%
+                </Button>
+              </div>
+              <p className="mt-1 text-xs text-ink-soft">
+                Si tu ticket es mixto (parte tasa 0%, parte 16%, ej. Walmart), captura aquí solo el IVA que viene
+                desglosado. &quot;Calcular 16%&quot; asume que TODO el monto es a esa tasa — no lo uses si el
+                ticket es mixto o de tasa 0%.
+              </p>
             </div>
 
             <div>
@@ -289,8 +380,11 @@ export default function MovementManager({
         </Card>
       )}
 
-      {sortedMovements.length === 0 ? (
-        <EmptyState title="Todavía no hay movimientos" description="Agrega el primero con el botón de arriba." />
+      {displayedMovements.length === 0 ? (
+        <EmptyState
+          title={showOnlyPending ? "No hay tickets pendientes de facturar" : "Todavía no hay movimientos"}
+          description={showOnlyPending ? "Cuando marques algo como \"Pendiente de facturar\" aparecerá aquí." : "Agrega el primero con el botón de arriba."}
+        />
       ) : (
         <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-left text-sm">
@@ -302,11 +396,12 @@ export default function MovementManager({
                 <th className="px-4 py-3 font-medium">Categoría</th>
                 <th className="px-4 py-3 font-medium">Forma de pago</th>
                 <th className="px-4 py-3 font-medium">Monto</th>
+                <th className="px-4 py-3 font-medium">Fiscal</th>
                 <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
             <tbody>
-              {sortedMovements.map((m) => (
+              {displayedMovements.map((m) => (
                 <tr key={m.id} className={`border-b border-line last:border-0 hover:bg-paper ${m.voided_at ? "opacity-50" : ""}`}>
                   <td className="px-4 py-3 text-ink">{m.movement_date}</td>
                   <td className="px-4 py-3 text-ink-soft">{m.movement_type?.name ?? "—"}</td>
@@ -314,8 +409,31 @@ export default function MovementManager({
                   <td className="px-4 py-3 text-ink-soft">{m.category?.name ?? "—"}</td>
                   <td className="px-4 py-3 text-ink-soft">{m.payment_method?.name ?? "—"}</td>
                   <td className="figure px-4 py-3 text-ink">{money(m.amount)}</td>
+                  <td className="px-4 py-3">
+                    {m.voided_at ? (
+                      <Pill tone={TAX_STATUS_TONE[m.tax_status]}>{TAX_STATUS_LABEL[m.tax_status]}</Pill>
+                    ) : (
+                      <select
+                        value={m.tax_status}
+                        onChange={(e) => handleTaxStatusChange(m.id, e.target.value as Movement["tax_status"])}
+                        className={`rounded-lg border border-line bg-paper-raised px-2 py-1 text-xs ${
+                          TAX_STATUS_TONE[m.tax_status] === "pine"
+                            ? "text-pine"
+                            : TAX_STATUS_TONE[m.tax_status] === "gold"
+                              ? "text-gold"
+                              : "text-ink-soft"
+                        }`}
+                      >
+                        <option value="no_invoice">Sin factura</option>
+                        <option value="pending_invoice">Pendiente de facturar</option>
+                        <option value="invoiced">Facturado</option>
+                      </select>
+                    )}
+                    {m.tax_iva_amount > 0 && <p className="figure mt-1 text-xs text-ink-soft">IVA {money(m.tax_iva_amount)}</p>}
+                    {m.cfdi_uuid && <p className="mt-1 text-xs text-pine">Factura XML</p>}
+                  </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-3 text-xs">
+                    <div className="flex flex-wrap justify-end gap-3 text-xs">
                       {m.attachments.length > 0 && (
                         <button
                           className="text-ink-soft underline underline-offset-2 hover:text-ink"

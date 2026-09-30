@@ -66,6 +66,8 @@ export default function ReportTabs({
     { key: "category", label: "Categoría", format: (v) => (v as { name: string } | null)?.name ?? "" },
     { key: "payment_method", label: "Forma de pago", format: (v) => (v as { name: string } | null)?.name ?? "" },
     { key: "amount", label: "Monto", format: (v) => Number(v).toFixed(2) },
+    { key: "tax_status", label: "Estado fiscal", format: (v) => ({ no_invoice: "Sin factura", pending_invoice: "Pendiente de facturar", invoiced: "Facturado" }[v as string] ?? "") },
+    { key: "tax_iva_amount", label: "IVA", format: (v) => Number(v).toFixed(2) },
   ];
 
   const supplierColumns: Column<{ name: string; amount: number; percent: number }>[] = [

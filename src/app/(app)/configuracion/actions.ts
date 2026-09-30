@@ -41,3 +41,24 @@ export async function toggleSimpleItemActive(table: string, id: string, isActive
   if (error) throw new Error(error.message);
   revalidatePath("/configuracion");
 }
+
+export async function updateBusinessRfc(rfc: string) {
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) throw new Error("No autenticado");
+  const { data: userProfile } = await supabase
+    .from("user_profiles")
+    .select("business_id")
+    .eq("id", auth.user.id)
+    .single();
+  if (!userProfile) throw new Error("Perfil de negocio no encontrado");
+
+  const trimmed = rfc.trim().toUpperCase();
+  const { error } = await supabase
+    .from("businesses")
+    .update({ rfc: trimmed || null })
+    .eq("id", userProfile.business_id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/configuracion");
+  revalidatePath("/compras-gastos");
+}

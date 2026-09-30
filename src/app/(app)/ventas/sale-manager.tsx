@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { Button, Card, Input, Label, Pill, Textarea, EmptyState } from "@/components/ui/primitives";
 import { createSale, updateSale, voidSale, findSaleByDate } from "./actions";
 import { todayISO } from "@/lib/date";
 import { exportXLSX, exportCSV, exportPDF, type Column } from "@/lib/export";
 import ImportSales from "./import-sales";
+import { calcIva16FromTotal } from "@/lib/tax";
 
 type Sale = {
   id: string;
@@ -18,6 +19,7 @@ type Sale = {
   total_amount: number;
   pos_reported_total: number | null;
   pos_difference: number | null;
+  sales_iva_amount: number;
   notes: string | null;
   voided_at: string | null;
 };
@@ -32,6 +34,21 @@ export default function SaleManager({ sales }: { sales: Sale[] }) {
   const [duplicateId, setDuplicateId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const cashRef = useRef<HTMLInputElement>(null);
+  const cardRef = useRef<HTMLInputElement>(null);
+  const transferRef = useRef<HTMLInputElement>(null);
+  const ivaRef = useRef<HTMLInputElement>(null);
+
+  function fillIva16(refs: { cash: HTMLInputElement | null; card: HTMLInputElement | null; transfer: HTMLInputElement | null; iva: HTMLInputElement | null }) {
+    const total =
+      Number(refs.cash?.value ?? 0) + Number(refs.card?.value ?? 0) + Number(refs.transfer?.value ?? 0);
+    if (refs.iva) refs.iva.value = String(calcIva16FromTotal(total));
+  }
+
+  const editCashRef = useRef<HTMLInputElement>(null);
+  const editCardRef = useRef<HTMLInputElement>(null);
+  const editTransferRef = useRef<HTMLInputElement>(null);
+  const editIvaRef = useRef<HTMLInputElement>(null);
 
   const visible = useMemo(
     () => [...sales].sort((a, b) => (a.sale_date < b.sale_date ? 1 : -1)),
@@ -161,19 +178,34 @@ export default function SaleManager({ sales }: { sales: Sale[] }) {
               </div>
               <div>
                 <Label htmlFor="cash_amount">Efectivo</Label>
-                <Input id="cash_amount" name="cash_amount" type="number" min={0} step="0.01" defaultValue={0} />
+                <Input ref={cashRef} id="cash_amount" name="cash_amount" type="number" min={0} step="0.01" defaultValue={0} />
               </div>
               <div>
                 <Label htmlFor="card_amount">Tarjeta</Label>
-                <Input id="card_amount" name="card_amount" type="number" min={0} step="0.01" defaultValue={0} />
+                <Input ref={cardRef} id="card_amount" name="card_amount" type="number" min={0} step="0.01" defaultValue={0} />
               </div>
               <div>
                 <Label htmlFor="transfer_amount">Transferencia</Label>
-                <Input id="transfer_amount" name="transfer_amount" type="number" min={0} step="0.01" defaultValue={0} />
+                <Input ref={transferRef} id="transfer_amount" name="transfer_amount" type="number" min={0} step="0.01" defaultValue={0} />
               </div>
               <div>
                 <Label htmlFor="pos_reported_total">Total según POS (opcional)</Label>
                 <Input id="pos_reported_total" name="pos_reported_total" type="number" min={0} step="0.01" />
+              </div>
+              <div>
+                <Label htmlFor="sales_iva_amount">IVA de venta (opcional)</Label>
+                <div className="flex gap-2">
+                  <Input ref={ivaRef} id="sales_iva_amount" name="sales_iva_amount" type="number" min={0} step="0.01" placeholder="0.00" />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() =>
+                      fillIva16({ cash: cashRef.current, card: cardRef.current, transfer: transferRef.current, iva: ivaRef.current })
+                    }
+                  >
+                    Calcular 16%
+                  </Button>
+                </div>
               </div>
               <div className="sm:col-span-2">
                 <Label htmlFor="notes">Notas</Label>
@@ -213,10 +245,22 @@ export default function SaleManager({ sales }: { sales: Sale[] }) {
                         <Input name="num_orders" type="number" min={0} defaultValue={s.num_orders} placeholder="Órdenes" />
                         <Input name="num_products" type="number" min={0} defaultValue={s.num_products} placeholder="Productos" />
                         <div />
-                        <Input name="cash_amount" type="number" min={0} step="0.01" defaultValue={s.cash_amount} placeholder="Efectivo" />
-                        <Input name="card_amount" type="number" min={0} step="0.01" defaultValue={s.card_amount} placeholder="Tarjeta" />
-                        <Input name="transfer_amount" type="number" min={0} step="0.01" defaultValue={s.transfer_amount} placeholder="Transferencia" />
+                        <Input ref={editCashRef} name="cash_amount" type="number" min={0} step="0.01" defaultValue={s.cash_amount} placeholder="Efectivo" />
+                        <Input ref={editCardRef} name="card_amount" type="number" min={0} step="0.01" defaultValue={s.card_amount} placeholder="Tarjeta" />
+                        <Input ref={editTransferRef} name="transfer_amount" type="number" min={0} step="0.01" defaultValue={s.transfer_amount} placeholder="Transferencia" />
                         <Input name="pos_reported_total" type="number" min={0} step="0.01" defaultValue={s.pos_reported_total ?? ""} placeholder="Total POS" />
+                        <div className="flex gap-2">
+                          <Input ref={editIvaRef} name="sales_iva_amount" type="number" min={0} step="0.01" defaultValue={s.sales_iva_amount ?? ""} placeholder="IVA de venta" />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() =>
+                              fillIva16({ cash: editCashRef.current, card: editCardRef.current, transfer: editTransferRef.current, iva: editIvaRef.current })
+                            }
+                          >
+                            16%
+                          </Button>
+                        </div>
                         <Textarea name="notes" defaultValue={s.notes ?? ""} rows={1} className="sm:col-span-2" />
                         <div className="flex gap-2 sm:col-span-3">
                           <Button type="submit" disabled={isPending}>Guardar</Button>
