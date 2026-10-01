@@ -15,6 +15,7 @@ import {
 import { calcIva16FromTotal } from "@/lib/tax";
 import { todayISO } from "@/lib/date";
 import { exportXLSX, exportCSV, exportPDF, type Column } from "@/lib/export";
+import ImportCfdi from "./import-cfdi";
 
 type MovementType = {
   id: string;
@@ -23,11 +24,12 @@ type MovementType = {
   requires_supplier: boolean;
   requires_category: boolean;
 };
-type Option = { id: string; name: string };
+type Option = { id: string; name: string; tax_id?: string | null };
 type Movement = {
   id: string;
   movement_date: string;
   amount: number;
+  cfdi_uuid?: string | null;
   notes: string | null;
   voided_at: string | null;
   tax_status: "no_invoice" | "pending_invoice" | "invoiced";
@@ -54,6 +56,7 @@ const money = (n: number) => n.toLocaleString("es-MX", { style: "currency", curr
 
 export default function MovementManager({
   businessId,
+  businessRfc,
   movements,
   movementTypes,
   suppliers,
@@ -61,6 +64,7 @@ export default function MovementManager({
   paymentMethods,
 }: {
   businessId: string;
+  businessRfc: string | null;
   movements: Movement[];
   movementTypes: MovementType[];
   suppliers: Option[];
@@ -68,6 +72,7 @@ export default function MovementManager({
   paymentMethods: Option[];
 }) {
   const [showForm, setShowForm] = useState(false);
+  const [showCfdiImport, setShowCfdiImport] = useState(false);
   const [showOnlyPending, setShowOnlyPending] = useState(false);
   const [movementTypeId, setMovementTypeId] = useState("");
   const [supplierId, setSupplierId] = useState("");
@@ -190,6 +195,9 @@ export default function MovementManager({
           <p className="text-sm text-ink-soft">Todo lo que sale de dinero del negocio.</p>
         </div>
         <Button onClick={() => setShowForm((v) => !v)}>{showForm ? "Cancelar" : "Nuevo movimiento"}</Button>
+        <Button variant="ghost" onClick={() => setShowCfdiImport((v) => !v)}>
+          {showCfdiImport ? "Cancelar" : "Registrar desde factura (XML)"}
+        </Button>
         <Button
           variant={showOnlyPending ? "primary" : "ghost"}
           onClick={() => setShowOnlyPending((v) => !v)}
@@ -207,6 +215,18 @@ export default function MovementManager({
       </div>
 
       {error && <p className="text-sm text-rust">{error}</p>}
+
+      {showCfdiImport && (
+        <ImportCfdi
+          businessId={businessId}
+          businessRfc={businessRfc}
+          movementTypes={movementTypes}
+          suppliers={suppliers}
+          categories={categories}
+          paymentMethods={paymentMethods}
+          onDone={() => setShowCfdiImport(false)}
+        />
+      )}
 
       {showForm && (
         <Card className="p-5">
@@ -410,6 +430,7 @@ export default function MovementManager({
                       </select>
                     )}
                     {m.tax_iva_amount > 0 && <p className="figure mt-1 text-xs text-ink-soft">IVA {money(m.tax_iva_amount)}</p>}
+                    {m.cfdi_uuid && <p className="mt-1 text-xs text-pine">Factura XML</p>}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex flex-wrap justify-end gap-3 text-xs">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import SignOutButton from "@/components/signout-button";
+import MobileNav from "@/components/mobile-nav";
 
 const NAV = [
   { href: "/dashboard", label: "Panel" },
@@ -11,6 +12,7 @@ const NAV = [
   { href: "/proveedores", label: "Proveedores" },
   { href: "/categorias", label: "Categorías" },
   { href: "/reportes", label: "Reportes" },
+  { href: "/analizador-facturas", label: "Analizador de facturas" },
   { href: "/configuracion", label: "Configuración" },
 ];
 
@@ -28,16 +30,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .eq("id", user.id)
     .maybeSingle();
 
+  const businessName = (profile?.business as unknown as { name: string } | null)?.name ?? "Tu negocio";
+  const userLabel = profile?.full_name ?? user.email ?? "";
+
   return (
     <div className="flex min-h-screen w-full flex-col md:flex-row">
-      <aside className="flex flex-col border-line bg-paper-raised md:w-60 md:shrink-0 md:border-r">
+      <MobileNav nav={NAV} businessName={businessName} userLabel={userLabel} />
+
+      <aside className="hidden border-line bg-paper-raised md:flex md:w-60 md:shrink-0 md:flex-col md:border-r">
         <div className="border-b border-line px-5 py-5">
           <p className="font-display font-semibold tracking-tight text-lg text-ink">Finanzas</p>
-          <p className="text-xs text-ink-soft">
-            {(profile?.business as unknown as { name: string } | null)?.name ?? "Tu negocio"}
-          </p>
+          <p className="text-xs text-ink-soft">{businessName}</p>
         </div>
-        <nav className="flex flex-1 flex-wrap gap-1 overflow-x-auto px-3 py-3 md:flex-col md:flex-nowrap md:overflow-visible">
+        <nav className="flex flex-1 flex-col gap-1 px-3 py-3">
           {NAV.map((item) => (
             <Link
               key={item.href}
@@ -49,7 +54,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           ))}
         </nav>
         <div className="border-t border-line px-5 py-4">
-          <p className="truncate text-xs text-ink-soft">{profile?.full_name ?? user.email}</p>
+          <p className="truncate text-xs text-ink-soft">{userLabel}</p>
           <SignOutButton />
         </div>
       </aside>
