@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #fafafa;
+  --paper-raised: #ffffff;
+  --ink: #18181b;
+  --ink-soft: #71717a;
+  --line: #e4e4e7;
+  --gold: #d97706;
+  --gold-soft: #fef3c7;
+  --rust: #dc2626;
+  --rust-soft: #fee2e2;
+  --pine: #059669;
+  --pine-soft: #d1fae5;
+}
+
+/* Modo oscuro automático — sigue la preferencia del sistema operativo
+   (que a su vez suele cambiar sola según la hora, en iOS/macOS/Windows/Android). */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #09090b;
+    --paper-raised: #17171a;
+    --ink: #fafafa;
+    --ink-soft: #a1a1aa;
+    --line: #27272a;
+    --gold: #f59e0b;
+    --gold-soft: #3d2c0a;
+    --rust: #f87171;
+    --rust-soft: #3f1414;
+    --pine: #34d399;
+    --pine-soft: #0b2e22;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-rust: var(--rust);
+  --color-rust-soft: var(--rust-soft);
+  --color-pine: var(--pine);
+  --color-pine-soft: var(--pine-soft);
+  --font-display: var(--font-manrope);
+  --font-sans: var(--font-manrope);
+  --font-mono: var(--font-plex-mono);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+::selection {
+  background: var(--gold-soft);
+}
+
+.figure {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+@media print {
+  aside, .no-print {
+    display: none !important;
+  }
+}
