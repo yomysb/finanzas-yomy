@@ -5,11 +5,13 @@ import BusinessRfc from "./business-rfc";
 export default async function ConfiguracionPage() {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
-  const [{ data: paymentMethods }, { data: businessTypes }, { data: profile }] = await Promise.all([
-    supabase.from("payment_methods").select("id, name, is_active").order("name"),
-    supabase.from("business_types").select("id, name, is_active").order("name"),
-    supabase.from("user_profiles").select("business:businesses(rfc)").eq("id", auth.user!.id).single(),
-  ]);
+  const [{ data: paymentMethods }, { data: businessTypes }, { data: menuCategories }, { data: profile }] =
+    await Promise.all([
+      supabase.from("payment_methods").select("id, name, is_active").order("name"),
+      supabase.from("business_types").select("id, name, is_active").order("name"),
+      supabase.from("menu_categories").select("id, name, is_active").order("name"),
+      supabase.from("user_profiles").select("business:businesses(rfc)").eq("id", auth.user!.id).single(),
+    ]);
   const businessRfc = (profile?.business as unknown as { rfc: string | null } | null)?.rfc ?? null;
 
   return (
@@ -33,6 +35,13 @@ export default async function ConfiguracionPage() {
           helpText="Para clasificar a tus proveedores."
           placeholder="Ej. Cremería"
           items={businessTypes ?? []}
+        />
+        <SimpleCatalog
+          table="menu_categories"
+          title="Categorías de menú"
+          helpText="Para clasificar los productos en Ingeniería de menú."
+          placeholder="Ej. Esquites"
+          items={menuCategories ?? []}
         />
       </div>
     </div>

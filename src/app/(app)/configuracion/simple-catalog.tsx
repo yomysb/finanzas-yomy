@@ -13,7 +13,7 @@ export default function SimpleCatalog({
   placeholder,
   items,
 }: {
-  table: "payment_methods" | "business_types";
+  table: "payment_methods" | "business_types" | "menu_categories";
   title: string;
   helpText: string;
   placeholder: string;

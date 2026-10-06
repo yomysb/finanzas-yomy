@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-const ALLOWED_TABLES = ["payment_methods", "business_types"] as const;
+const ALLOWED_TABLES = ["payment_methods", "business_types", "menu_categories"] as const;
 type AllowedTable = (typeof ALLOWED_TABLES)[number];
 
 function assertTable(table: string): asserts table is AllowedTable {
